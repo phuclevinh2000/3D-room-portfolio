@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import GSAP from 'gsap';
 
 import Experience from '../Experience';
 
@@ -13,7 +14,19 @@ export default class Controls {
     this.progress = 0;
     this.dummyCurve = new THREE.Vector3(0, 0, 0);
 
+    this.lerp = {
+      current: 0,
+      target: 0,
+      ease: 0.1,
+    };
+
+    this.position = new THREE.Vector3(0, 0, 0);
+    this.lookAtPosition = new THREE.Vector3(0, 0, 0);
+
+    this.directtionalVector = new THREE.Vector3(0, 0, 0);
+
     this.setPath();
+    this.onWheel();
   }
 
   setPath() {
@@ -39,14 +52,41 @@ export default class Controls {
     this.scene.add(curveObject);
   }
 
+  onWheel() {
+    window.addEventListener('wheel', (e) => {
+      console.log(e);
+      if (e.deltaY > 0) {
+        this.lerp.target += 0.01;
+        this.back = false;
+      } else {
+        this.lerp.target -= 0.01;
+        this.back = false;
+      }
+    });
+  }
+
   resize() {}
 
   update() {
-    this.curve.getPointAt(this.progress % 1, this.dummyCurve);
-    this.progress += 0.001;
-    if (this.progress < 0) {
-      this.progress = 1;
+    this.lerp.current = GSAP.utils.interpolate(
+      this.lerp.current,
+      this.lerp.target,
+      this.lerp.ease
+    );
+    if (this.back) {
+      this.lerp.target -= 0.001;
+    } else {
+      this.lerp.target += 0.001;
     }
-    this.camera.orthographicCamera.position.copy(this.dummyCurve);
+    // this.lerp.target += 0.001;
+    this.lerp.target = GSAP.utils.clamp(0, 1, this.lerp.target);
+    this.lerp.current = GSAP.utils.clamp(0, 1, this.lerp.current);
+    this.curve.getPointAt(this.lerp.current, this.position);
+
+    this.curve.getPointAt(this.lerp.current + 0.00001, this.lookAtPosition);
+
+    this.camera.orthographicCamera.position.copy(this.position);
+
+    this.camera.orthographicCamera.lookAt(this.lookAtPosition);
   }
 }
